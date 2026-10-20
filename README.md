@@ -4,6 +4,8 @@ See who runs on your Mac.
 
 WhoRuns is a menu bar app that lists every running process, grouped by the app or vendor that owns it. Each binary gets checked against its code signature, so you can tell in one look what belongs to Apple, what belongs to Slack, and what is unsigned.
 
+![WhoRuns panel](assets/screenshot.png)
+
 ## Install
 
 Grab `WhoRuns.dmg` from [releases](https://github.com/ronakforcast/WhoRuns/releases), open it, and drag WhoRuns into Applications.

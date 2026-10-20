@@ -215,7 +215,15 @@ struct PanelView: View {
             pendingKill = nil
             showResultBanner = true
         }
+        // Killed processes take a moment to leave the process table.
+        // Refresh immediately, then twice more so the list converges fast.
         Task { await model.rescan() }
+        Task {
+            try? await Task.sleep(nanoseconds: 600_000_000)
+            await model.rescan()
+            try? await Task.sleep(nanoseconds: 1_000_000_000)
+            await model.rescan()
+        }
     }
 
     private func outcomeText(_ outcome: AppModel.KillOutcome, total: Int, subject: String) -> (text: String, failed: Bool) {

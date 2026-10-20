@@ -74,6 +74,14 @@ final class AppModel: ObservableObject {
         return KillOutcome(killedCount: killed, failures: failures)
     }
 
+    private let selfPID = ProcessInfo.processInfo.processIdentifier
+
+    /// Every process that is not an Apple system process, excluding WhoRuns itself
+    /// (killing itself mid-sweep would abort the rest).
+    func nonSystemProcs() -> [ProcInfo] {
+        procs.filter { $0.owner != "Apple" && $0.id != selfPID }
+    }
+
     // MARK: - Signature verification
 
     /// Kicks off verification for every unseen non-Apple binary.

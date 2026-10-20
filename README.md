@@ -26,6 +26,7 @@ You need macOS 13 or later. The build is universal, so Apple silicon and Intel b
 - Unsigned binaries flagged in red
 - Search, scope filters, and sorting by memory, CPU, or name
 - Kill a single process, or every process owned by one app, with confirmation
+- Kill every non-system process at once, with one confirmation
 
 ## How it works
 

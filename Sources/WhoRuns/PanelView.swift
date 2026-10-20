@@ -17,6 +17,7 @@ private struct DistEntry: Identifiable {
 private enum PendingKill: Equatable {
     case single(ProcInfo)
     case group(OwnerGroup)
+    case bulk([ProcInfo])
 }
 
 // MARK: - Panel
@@ -154,6 +155,8 @@ struct PanelView: View {
             return "Kill \(p.name) (PID \(p.id))? Unsaved data may be lost."
         case .group(let g):
             return "Kill all \(g.procs.count) processes owned by \(g.name)? Unsaved data may be lost."
+        case .bulk(let list):
+            return "Kill all \(list.count) non-system processes? This quits your apps. Unsaved data may be lost."
         case nil:
             return ""
         }
@@ -195,16 +198,15 @@ struct PanelView: View {
             resultIsError = resultMessage.hasPrefix("Could not")
         case .group(let group):
             let outcome = model.terminateAll(group.procs)
-            var text = "Killed \(outcome.killedCount) of \(group.procs.count) processes owned by \(group.name)."
-            resultIsError = !outcome.failures.isEmpty
-            if !outcome.failures.isEmpty {
-                let list = outcome.failures.prefix(4).map { "\($0.name): \($0.reason)" }.joined(separator: "\n")
-                text += "\nFailed:\n" + list
-                if outcome.failures.count > 4 {
-                    text += "\n…and \(outcome.failures.count - 4) more"
-                }
-            }
+            let (text, failed) = outcomeText(outcome, total: group.procs.count,
+                                             subject: "processes owned by \(group.name)")
             resultMessage = text
+            resultIsError = failed
+        case .bulk(let list):
+            let outcome = model.terminateAll(list)
+            let (text, failed) = outcomeText(outcome, total: list.count, subject: "non-system processes")
+            resultMessage = text
+            resultIsError = failed
         case nil:
             return
         }
@@ -214,6 +216,19 @@ struct PanelView: View {
             showResultBanner = true
         }
         Task { await model.rescan() }
+    }
+
+    private func outcomeText(_ outcome: AppModel.KillOutcome, total: Int, subject: String) -> (text: String, failed: Bool) {
+        var text = "Killed \(outcome.killedCount) of \(total) \(subject)."
+        let failed = !outcome.failures.isEmpty
+        if failed {
+            let list = outcome.failures.prefix(4).map { "\($0.name): \($0.reason)" }.joined(separator: "\n")
+            text += "\nFailed:\n" + list
+            if outcome.failures.count > 4 {
+                text += "\n…and \(outcome.failures.count - 4) more"
+            }
+        }
+        return (text, failed)
     }
 
     // MARK: - Display-state builder (the ONLY place grouping/filtering happens)
@@ -296,6 +311,20 @@ struct PanelView: View {
                          value: formatGB(model.totalRAM),
                          label: "RAM",
                          tint: .purple)
+                Button {
+                    let targets = model.nonSystemProcs()
+                    guard !targets.isEmpty else { return }
+                    withAnimation { pendingKill = .bulk(targets) }
+                } label: {
+                    Image(systemName: "xmark.bin")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(.red.opacity(0.8))
+                        .frame(width: 26, height: 26)
+                        .background(Circle().fill(.red.opacity(0.1)))
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.borderless)
+                .help("Kill every non-system process (apps and background tools)")
                 Button {
                     Task { await model.rescan() }
                 } label: {
